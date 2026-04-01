@@ -200,5 +200,45 @@ document.addEventListener('keydown', (e) => {
 
 startBtn.addEventListener('click', startGame);
 
+// Touch controls for mobile
+let touchStartX = 0;
+let touchStartY = 0;
+
+canvas.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+    const diffX = e.changedTouches[0].clientX - touchStartX;
+    const diffY = e.changedTouches[0].clientY - touchStartY;
+
+    if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
+        if (!gameRunning) startGame();
+        return;
+    }
+
+    if (Math.abs(diffX) > Math.abs(diffY)) {
+        if (diffX > 0 && dx !== -1) { dx = 1; dy = 0; }
+        else if (diffX < 0 && dx !== 1) { dx = -1; dy = 0; }
+    } else {
+        if (diffY > 0 && dy !== -1) { dx = 0; dy = 1; }
+        else if (diffY < 0 && dy !== 1) { dx = 0; dy = -1; }
+    }
+    e.preventDefault();
+}, { passive: false });
+
+// Spacebar to start/restart
+document.addEventListener('keydown', (e) => {
+    if (e.key === ' ' && !gameRunning) {
+        startGame();
+    }
+});
+
 // Draw initial empty board
 draw();

@@ -15,9 +15,54 @@ let score = 0;
 let highScore = parseInt(localStorage.getItem('snakeHighScore')) || 0;
 let gameLoop = null;
 let gameRunning = false;
+let gamePaused = false;
 let speed = 120;
 
 highScoreEl.textContent = highScore;
+
+// Simple sound effects using Web Audio API
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(freq, duration, type = 'square') {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.value = 0.1;
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+}
+
+function playEatSound() { playSound(600, 0.1); playSound(800, 0.15); }
+function playGameOverSound() {
+    playSound(300, 0.2, 'sawtooth');
+    setTimeout(() => playSound(200, 0.3, 'sawtooth'), 150);
+}
+
+function togglePause() {
+    if (!gameRunning) return;
+    gamePaused = !gamePaused;
+    if (gamePaused) {
+        clearInterval(gameLoop);
+        startBtn.textContent = 'Paused';
+        // Draw pause overlay
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#00ff88';
+        ctx.font = 'bold 32px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2);
+        ctx.fillStyle = '#aaa';
+        ctx.font = '16px sans-serif';
+        ctx.fillText('Press P or Escape to resume', canvas.width / 2, canvas.height / 2 + 30);
+    } else {
+        startBtn.textContent = 'Playing...';
+        gameLoop = setInterval(update, speed);
+    }
+}
 
 function initGame() {
     snake = [
@@ -65,6 +110,7 @@ function update() {
     if (head.x === food.x && head.y === food.y) {
         score++;
         scoreEl.textContent = score;
+        playEatSound();
         placeFood();
         // Speed up slightly
         if (speed > 60) {
@@ -138,7 +184,9 @@ function draw() {
 function gameOver() {
     clearInterval(gameLoop);
     gameRunning = false;
+    gamePaused = false;
     startBtn.textContent = 'Play Again';
+    playGameOverSound();
 
     if (score > highScore) {
         highScore = score;
@@ -189,6 +237,11 @@ document.addEventListener('keydown', (e) => {
         case 'd':
         case 'D':
             if (dx !== -1) { dx = 1; dy = 0; }
+            break;
+        case 'p':
+        case 'P':
+        case 'Escape':
+            togglePause();
             break;
     }
 

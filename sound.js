@@ -27,4 +27,18 @@ const Sound = {
         setTimeout(() => playSound(600, 0.1), 100);
         setTimeout(() => playSound(800, 0.15), 200);
     },
+    gunshot() {
+        playSound(150, 0.08, 'sawtooth');
+        playSound(80, 0.05, 'square');
+    },
+    hit() {
+        playSound(300, 0.06, 'triangle');
+    },
+    enemyDeath() {
+        playSound(200, 0.15, 'sawtooth');
+        playSound(100, 0.2, 'square');
+    },
+    playerHit() {
+        playSound(100, 0.15, 'sawtooth');
+    },
 };

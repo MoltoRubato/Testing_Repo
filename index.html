@@ -11,6 +11,7 @@
         <div id="game-switcher">
             <button class="game-tab active" data-game="snake">Snake</button>
             <button class="game-tab" data-game="tetris">Tetris</button>
+            <button class="game-tab" data-game="shooter">Shooter</button>
         </div>
         <h1 id="game-title">Snake</h1>
         <div id="score-board">
@@ -30,14 +31,43 @@
                 <canvas id="next-piece-canvas" width="100" height="100"></canvas>
             </div>
         </div>
+        <!-- Shooter container (separate from canvas games) -->
+        <div id="shooter-container" style="display:none">
+            <div id="shooter-viewport"></div>
+            <div id="shooter-hud">
+                <div id="hud-crosshair">+</div>
+                <div id="hud-health">
+                    <div id="health-bar-bg"><div id="health-bar"></div></div>
+                    <span id="health-text">100</span>
+                </div>
+                <div id="hud-ammo">
+                    <span id="ammo-current">30</span> / <span id="ammo-reserve">90</span>
+                    <span id="reload-indicator" style="display:none">RELOADING...</span>
+                </div>
+                <div id="hud-wave">Wave: <span id="wave-number">1</span></div>
+                <div id="hud-kills">Kills: <span id="kill-count">0</span></div>
+            </div>
+            <div id="shooter-overlay" class="shooter-overlay-visible">
+                <h2>FPS Shooter</h2>
+                <p>Click to start &bull; WASD to move &bull; Mouse to aim</p>
+                <p>Left click to shoot &bull; R to reload &bull; Shift to sprint</p>
+            </div>
+            <div id="shooter-death-screen" style="display:none">
+                <h2>YOU DIED</h2>
+                <p>Kills: <span id="death-kills">0</span> &bull; Waves: <span id="death-waves">0</span></p>
+                <button id="respawn-btn">Respawn</button>
+            </div>
+        </div>
         <div id="controls">
             <button id="start-btn">Start Game</button>
             <p id="instructions">Arrow keys / WASD to move &bull; P or Esc to pause &bull; Swipe on mobile</p>
         </div>
     </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="sound.js"></script>
     <script src="snake.js"></script>
     <script src="tetris.js"></script>
+    <script src="shooter.js"></script>
     <script src="main.js"></script>
 </body>
 </html>

@@ -12,6 +12,10 @@ const nextPieceContainer = document.getElementById('next-piece-container');
 const holdPieceContainer = document.getElementById('hold-piece-container');
 const linesDisplay = document.getElementById('lines-display');
 const linesCountEl = document.getElementById('lines-count');
+const shooterContainer = document.getElementById('shooter-container');
+const gameArea = document.getElementById('game-area');
+const scoreBoardEl = document.getElementById('score-board');
+const controlsEl = document.getElementById('controls');
 const tabs = document.querySelectorAll('.game-tab');
 
 let currentGame = null;
@@ -20,6 +24,13 @@ let currentGameName = 'snake';
 const games = {
     snake: SnakeGame,
     tetris: TetrisGame,
+    shooter: ShooterGame,
+};
+
+const gameLabels = {
+    snake: 'Snake',
+    tetris: 'Tetris',
+    shooter: 'Shooter',
 };
 
 function switchGame(name) {
@@ -32,27 +43,49 @@ function switchGame(name) {
 
     // Update UI
     tabs.forEach(t => t.classList.toggle('active', t.dataset.game === name));
-    gameTitle.textContent = name === 'snake' ? 'Snake' : 'Tetris';
+    gameTitle.textContent = gameLabels[name];
     startBtn.textContent = 'Start Game';
     instructions.innerHTML = currentGame.getInstructions();
 
-    // Snake uses 400x400, Tetris uses 300x600
-    if (name === 'tetris') {
-        canvas.width = 300;
-        canvas.height = 600;
-        levelDisplay.style.display = '';
-        nextPieceContainer.style.display = '';
-        holdPieceContainer.style.display = '';
-        linesDisplay.style.display = '';
-        levelEl.textContent = '1';
-        linesCountEl.textContent = '0';
+    // Hide everything first
+    gameArea.style.display = 'none';
+    shooterContainer.style.display = 'none';
+    levelDisplay.style.display = 'none';
+    nextPieceContainer.style.display = 'none';
+    holdPieceContainer.style.display = 'none';
+    linesDisplay.style.display = 'none';
+
+    if (name === 'shooter') {
+        // Shooter has its own container
+        shooterContainer.style.display = '';
+        scoreBoardEl.style.display = 'none';
+        controlsEl.style.display = 'none';
+        // Reset overlay
+        const overlay = document.getElementById('shooter-overlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+            overlay.querySelector('h2').textContent = 'FPS Shooter';
+        }
+        const deathScreen = document.getElementById('shooter-death-screen');
+        if (deathScreen) deathScreen.style.display = 'none';
     } else {
-        canvas.width = 400;
-        canvas.height = 400;
-        levelDisplay.style.display = 'none';
-        nextPieceContainer.style.display = 'none';
-        holdPieceContainer.style.display = 'none';
-        linesDisplay.style.display = 'none';
+        gameArea.style.display = 'flex';
+        scoreBoardEl.style.display = 'flex';
+        controlsEl.style.display = '';
+
+        if (name === 'tetris') {
+            canvas.width = 300;
+            canvas.height = 600;
+            levelDisplay.style.display = '';
+            nextPieceContainer.style.display = '';
+            holdPieceContainer.style.display = '';
+            linesDisplay.style.display = '';
+            levelEl.textContent = '1';
+            linesCountEl.textContent = '0';
+        } else {
+            canvas.width = 400;
+            canvas.height = 400;
+        }
     }
 
     scoreEl.textContent = '0';
@@ -89,6 +122,17 @@ startBtn.addEventListener('click', () => {
 
 // Keyboard controls
 document.addEventListener('keydown', (e) => {
+    // Don't intercept keys when shooter is active (it handles its own input)
+    if (currentGameName === 'shooter') {
+        if (e.key === 'Escape' && currentGame.running) {
+            const result = currentGame.handleKey(e.key);
+            if (result && result.pause) {
+                startBtn.textContent = result.pause;
+            }
+        }
+        return;
+    }
+
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
         e.preventDefault();
     }

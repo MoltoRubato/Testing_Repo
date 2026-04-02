@@ -67,6 +67,16 @@ const ShooterGame = {
     overlay: null,
     deathScreen: null,
 
+    // Weapon model
+    weaponModel: null,
+    weaponSway: { x: 0, y: 0, targetX: 0, targetY: 0 },
+    weaponRecoil: 0,
+    aimDownSights: false,
+
+    // Minimap
+    minimapCanvas: null,
+    minimapCtx: null,
+
     // Arena
     arenaSize: 40,
     wallHeight: 4,
@@ -119,6 +129,8 @@ const ShooterGame = {
 
         this.buildArena();
         this.setupLighting();
+        this.buildWeaponModel();
+        this.setupMinimap();
         this.setupPointerLock();
 
         // Initial render
@@ -251,6 +263,161 @@ const ShooterGame = {
                 max: { x: pos[0] + 0.6, z: pos[2] + 0.6 },
             });
         });
+    },
+
+    buildWeaponModel() {
+        // First-person weapon model attached to camera
+        const group = new THREE.Group();
+
+        // Gun body
+        const bodyGeo = new THREE.BoxGeometry(0.08, 0.08, 0.45);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.3, metalness: 0.8 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        group.add(body);
+
+        // Barrel
+        const barrelGeo = new THREE.CylinderGeometry(0.02, 0.025, 0.3, 8);
+        const barrelMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.2, metalness: 0.9 });
+        const barrel = new THREE.Mesh(barrelGeo, barrelMat);
+        barrel.rotation.x = Math.PI / 2;
+        barrel.position.set(0, 0.02, -0.35);
+        group.add(barrel);
+
+        // Magazine
+        const magGeo = new THREE.BoxGeometry(0.05, 0.15, 0.06);
+        const magMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.4, metalness: 0.6 });
+        const mag = new THREE.Mesh(magGeo, magMat);
+        mag.position.set(0, -0.1, 0.05);
+        group.add(mag);
+
+        // Grip
+        const gripGeo = new THREE.BoxGeometry(0.06, 0.12, 0.06);
+        const gripMat = new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.9 });
+        const grip = new THREE.Mesh(gripGeo, gripMat);
+        grip.position.set(0, -0.08, 0.12);
+        grip.rotation.x = 0.2;
+        group.add(grip);
+
+        // Sight
+        const sightGeo = new THREE.BoxGeometry(0.015, 0.03, 0.015);
+        const sightMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 1.0 });
+        const frontSight = new THREE.Mesh(sightGeo, sightMat);
+        frontSight.position.set(0, 0.055, -0.2);
+        const rearSight = new THREE.Mesh(sightGeo, sightMat);
+        rearSight.position.set(0, 0.055, 0.05);
+        group.add(frontSight, rearSight);
+
+        // Position in front of camera
+        group.position.set(0.25, -0.22, -0.4);
+        group.rotation.y = Math.PI;
+
+        this.camera.add(group);
+        this.scene.add(this.camera);
+        this.weaponModel = group;
+    },
+
+    setupMinimap() {
+        // Create minimap canvas overlay
+        let mc = document.getElementById('minimap-canvas');
+        if (!mc) {
+            mc = document.createElement('canvas');
+            mc.id = 'minimap-canvas';
+            mc.width = 140;
+            mc.height = 140;
+            mc.style.cssText = 'position:absolute;bottom:50px;right:10px;border:1px solid rgba(0,255,136,0.4);border-radius:4px;z-index:11;pointer-events:none;opacity:0.85;';
+            this.container.appendChild(mc);
+        }
+        this.minimapCanvas = mc;
+        this.minimapCtx = mc.getContext('2d');
+    },
+
+    updateMinimap() {
+        const ctx = this.minimapCtx;
+        if (!ctx) return;
+        const S = this.arenaSize;
+        const W = this.minimapCanvas.width;
+        const H = this.minimapCanvas.height;
+        const scale = W / S;
+
+        ctx.fillStyle = 'rgba(15, 15, 35, 0.9)';
+        ctx.fillRect(0, 0, W, H);
+
+        // Draw obstacles
+        ctx.fillStyle = 'rgba(100, 100, 120, 0.6)';
+        for (const obs of this.obstacles) {
+            const x = (obs.min.x + S / 2) * scale;
+            const y = (obs.min.z + S / 2) * scale;
+            const w = (obs.max.x - obs.min.x) * scale;
+            const h = (obs.max.z - obs.min.z) * scale;
+            ctx.fillRect(x, y, w, h);
+        }
+
+        // Draw enemies
+        this.enemies.forEach(e => {
+            if (!e.alive) return;
+            const ex = (e.mesh.position.x + S / 2) * scale;
+            const ey = (e.mesh.position.z + S / 2) * scale;
+            ctx.fillStyle = '#ff4444';
+            ctx.beginPath();
+            ctx.arc(ex, ey, 3, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // Draw player
+        const px = (this.player.position.x + S / 2) * scale;
+        const py = (this.player.position.z + S / 2) * scale;
+        ctx.fillStyle = '#00ff88';
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Player direction indicator
+        const dirLen = 8;
+        const dx = Math.sin(this.player.yaw) * dirLen;
+        const dy = -Math.cos(this.player.yaw) * dirLen;
+        ctx.strokeStyle = '#00ff88';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px - dx, py - dy);
+        ctx.stroke();
+
+        // Border
+        ctx.strokeStyle = 'rgba(0, 255, 136, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(0, 0, W, H);
+    },
+
+    updateWeaponSway(delta, isMoving, isSprinting) {
+        if (!this.weaponModel) return;
+
+        // Movement sway
+        if (isMoving) {
+            const swaySpeed = isSprinting ? 10 : 6;
+            const swayAmount = isSprinting ? 0.015 : 0.008;
+            const t = performance.now() / 1000;
+            this.weaponSway.targetX = Math.sin(t * swaySpeed) * swayAmount;
+            this.weaponSway.targetY = Math.cos(t * swaySpeed * 2) * swayAmount * 0.5;
+        } else {
+            // Idle breathing
+            const t = performance.now() / 1000;
+            this.weaponSway.targetX = Math.sin(t * 1.5) * 0.002;
+            this.weaponSway.targetY = Math.cos(t * 1.2) * 0.001;
+        }
+
+        // Smooth interpolation
+        this.weaponSway.x += (this.weaponSway.targetX - this.weaponSway.x) * 8 * delta;
+        this.weaponSway.y += (this.weaponSway.targetY - this.weaponSway.y) * 8 * delta;
+
+        // Recoil recovery
+        this.weaponRecoil *= Math.max(0, 1 - delta * 12);
+
+        // Apply to weapon model
+        const baseX = 0.25;
+        const baseY = -0.22;
+        this.weaponModel.position.x = baseX + this.weaponSway.x;
+        this.weaponModel.position.y = baseY + this.weaponSway.y - this.weaponRecoil * 0.02;
+        this.weaponModel.rotation.x = this.weaponRecoil * 0.15;
     },
 
     setupPointerLock() {
@@ -403,6 +570,15 @@ const ShooterGame = {
         this.spawnEnemies(delta);
         this.checkWaveProgress();
 
+        // Determine movement state for weapon sway
+        const isMoving = this.keys['w'] || this.keys['W'] || this.keys['s'] || this.keys['S'] ||
+                         this.keys['a'] || this.keys['A'] || this.keys['d'] || this.keys['D'] ||
+                         this.keys['ArrowUp'] || this.keys['ArrowDown'] || this.keys['ArrowLeft'] || this.keys['ArrowRight'];
+        const isSprinting = this.keys['Shift'] && isMoving;
+
+        this.updateWeaponSway(delta, isMoving, isSprinting);
+        this.updateMinimap();
+
         // Update camera
         this.camera.position.copy(this.player.position);
         this.camera.rotation.order = 'YXZ';
@@ -500,6 +676,9 @@ const ShooterGame = {
                 mf.style.opacity = '1';
                 setTimeout(() => mf.style.opacity = '0', 50);
             }
+
+            // Weapon recoil
+            this.weaponRecoil = Math.min(this.weaponRecoil + 0.5, 1.5);
 
             // Raycast for hit detection
             const raycaster = new THREE.Raycaster();

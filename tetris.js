@@ -58,8 +58,18 @@ const TetrisGame = {
         }
     },
 
+    // 7-bag randomizer: guarantees all 7 pieces appear before repeating
+    bag: [],
+
     randomPiece() {
-        const idx = Math.floor(Math.random() * this.PIECES.length);
+        if (this.bag.length === 0) {
+            this.bag = [0, 1, 2, 3, 4, 5, 6];
+            for (let i = this.bag.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [this.bag[i], this.bag[j]] = [this.bag[j], this.bag[i]];
+            }
+        }
+        const idx = this.bag.pop();
         const p = this.PIECES[idx];
         return {
             shape: p.shape.map(row => [...row]),
@@ -84,6 +94,7 @@ const TetrisGame = {
         this.canHold = true;
         this.clearingLines = [];
         this.clearAnimFrame = 0;
+        this.bag = [];
         this.drawNextPiece();
         this.drawHoldPiece();
         this.lastTime = performance.now();
@@ -243,6 +254,7 @@ const TetrisGame = {
             Sound.lineClear();
 
             if (this.onScore) this.onScore(this.score);
+            if (this.onLines) this.onLines(this.lines);
 
             // Level up every 10 lines
             const newLevel = Math.floor(this.lines / 10) + 1;

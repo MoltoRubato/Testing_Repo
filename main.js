@@ -10,6 +10,8 @@ const levelDisplay = document.getElementById('level-display');
 const levelEl = document.getElementById('level');
 const nextPieceContainer = document.getElementById('next-piece-container');
 const holdPieceContainer = document.getElementById('hold-piece-container');
+const linesDisplay = document.getElementById('lines-display');
+const linesCountEl = document.getElementById('lines-count');
 const tabs = document.querySelectorAll('.game-tab');
 
 let currentGame = null;
@@ -41,13 +43,16 @@ function switchGame(name) {
         levelDisplay.style.display = '';
         nextPieceContainer.style.display = '';
         holdPieceContainer.style.display = '';
+        linesDisplay.style.display = '';
         levelEl.textContent = '1';
+        linesCountEl.textContent = '0';
     } else {
         canvas.width = 400;
         canvas.height = 400;
         levelDisplay.style.display = 'none';
         nextPieceContainer.style.display = 'none';
         holdPieceContainer.style.display = 'none';
+        linesDisplay.style.display = 'none';
     }
 
     scoreEl.textContent = '0';
@@ -61,6 +66,7 @@ function switchGame(name) {
         startBtn.textContent = 'Play Again';
     };
     currentGame.onLevel = (level) => { levelEl.textContent = level; };
+    currentGame.onLines = (lines) => { linesCountEl.textContent = lines; };
 
     currentGame.init(canvas, ctx);
 }

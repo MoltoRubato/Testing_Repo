@@ -9,6 +9,7 @@ const instructions = document.getElementById('instructions');
 const levelDisplay = document.getElementById('level-display');
 const levelEl = document.getElementById('level');
 const nextPieceContainer = document.getElementById('next-piece-container');
+const holdPieceContainer = document.getElementById('hold-piece-container');
 const tabs = document.querySelectorAll('.game-tab');
 
 let currentGame = null;
@@ -39,12 +40,14 @@ function switchGame(name) {
         canvas.height = 600;
         levelDisplay.style.display = '';
         nextPieceContainer.style.display = '';
+        holdPieceContainer.style.display = '';
         levelEl.textContent = '1';
     } else {
         canvas.width = 400;
         canvas.height = 400;
         levelDisplay.style.display = 'none';
         nextPieceContainer.style.display = 'none';
+        holdPieceContainer.style.display = 'none';
     }
 
     scoreEl.textContent = '0';

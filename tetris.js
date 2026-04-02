@@ -22,9 +22,13 @@ const TetrisGame = {
     onScore: null,
     onEnd: null,
     onLevel: null,
+    holdPiece: null,
+    canHold: true,
     dropTimer: 0,
     lastTime: 0,
     animationId: null,
+    clearingLines: [],
+    clearAnimFrame: 0,
 
     // Tetromino shapes and colors
     PIECES: [
@@ -42,6 +46,8 @@ const TetrisGame = {
         this.ctx = ctx;
         this.nextCanvas = document.getElementById('next-piece-canvas');
         this.nextCtx = this.nextCanvas.getContext('2d');
+        this.holdCanvas = document.getElementById('hold-piece-canvas');
+        this.holdCtx = this.holdCanvas.getContext('2d');
         this.drawEmpty();
     },
 
@@ -74,7 +80,12 @@ const TetrisGame = {
         this.speed = 800;
         this.currentPiece = this.randomPiece();
         this.nextPiece = this.randomPiece();
+        this.holdPiece = null;
+        this.canHold = true;
+        this.clearingLines = [];
+        this.clearAnimFrame = 0;
         this.drawNextPiece();
+        this.drawHoldPiece();
         this.lastTime = performance.now();
         this.dropTimer = 0;
 
@@ -171,6 +182,7 @@ const TetrisGame = {
             }
         }
         Sound.tetrisDrop();
+        this.canHold = true;
         this.clearLines();
         this.currentPiece = this.nextPiece;
         this.nextPiece = this.randomPiece();
@@ -179,6 +191,38 @@ const TetrisGame = {
         if (this.collides(this.currentPiece, 0, 0)) {
             this.gameOver();
         }
+    },
+
+    holdSwap() {
+        if (!this.canHold || !this.running || this.paused) return;
+        this.canHold = false;
+
+        // Find the original piece definition to reset shape
+        const currentColor = this.currentPiece.color;
+        const originalPiece = this.PIECES.find(p => p.color === currentColor);
+
+        if (this.holdPiece) {
+            const held = this.holdPiece;
+            this.holdPiece = {
+                shape: originalPiece.shape.map(row => [...row]),
+                color: currentColor,
+            };
+            this.currentPiece = {
+                shape: held.shape.map(row => [...row]),
+                color: held.color,
+                x: Math.floor(this.COLS / 2) - Math.ceil(held.shape[0].length / 2),
+                y: 0,
+            };
+        } else {
+            this.holdPiece = {
+                shape: originalPiece.shape.map(row => [...row]),
+                color: currentColor,
+            };
+            this.currentPiece = this.nextPiece;
+            this.nextPiece = this.randomPiece();
+            this.drawNextPiece();
+        }
+        this.drawHoldPiece();
     },
 
     clearLines() {
@@ -287,6 +331,8 @@ const TetrisGame = {
                 this.rotate(); break;
             case ' ':
                 this.hardDrop(); break;
+            case 'c': case 'C':
+                this.holdSwap(); break;
             case 'p': case 'P': case 'Escape':
                 return { pause: this.togglePause() };
         }
@@ -435,12 +481,42 @@ const TetrisGame = {
         }
     },
 
+    drawHoldPiece() {
+        const ctx = this.holdCtx;
+        const canvas = this.holdCanvas;
+        ctx.fillStyle = '#0f0f23';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (!this.holdPiece) return;
+
+        const shape = this.holdPiece.shape;
+        const blockSize = 20;
+        const offsetX = (canvas.width - shape[0].length * blockSize) / 2;
+        const offsetY = (canvas.height - shape.length * blockSize) / 2;
+        const alpha = this.canHold ? 1 : 0.4;
+
+        for (let r = 0; r < shape.length; r++) {
+            for (let c = 0; c < shape[r].length; c++) {
+                if (shape[r][c]) {
+                    ctx.globalAlpha = alpha;
+                    ctx.fillStyle = this.holdPiece.color;
+                    ctx.fillRect(offsetX + c * blockSize + 1, offsetY + r * blockSize + 1,
+                        blockSize - 2, blockSize - 2);
+                    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                    ctx.fillRect(offsetX + c * blockSize + 1, offsetY + r * blockSize + 1,
+                        blockSize - 2, 3);
+                    ctx.globalAlpha = 1;
+                }
+            }
+        }
+    },
+
     drawEmpty() {
         this.ctx.fillStyle = '#0f0f23';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     },
 
     getInstructions() {
-        return 'Arrow keys to move &bull; Up to rotate &bull; Space to hard drop &bull; P to pause';
+        return 'Arrow keys to move &bull; Up to rotate &bull; Space to hard drop &bull; C to hold &bull; P to pause';
     },
 };

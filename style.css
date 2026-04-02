@@ -82,17 +82,20 @@ h1 {
     display: block;
 }
 
-#next-piece-container {
+#next-piece-container,
+#hold-piece-container {
     text-align: center;
 }
 
-#next-piece-container p {
+#next-piece-container p,
+#hold-piece-container p {
     color: #888;
     margin-bottom: 6px;
     font-size: 0.9rem;
 }
 
-#next-piece-canvas {
+#next-piece-canvas,
+#hold-piece-canvas {
     border: 2px solid rgba(0, 255, 136, 0.3);
     border-radius: 4px;
     background-color: #0f0f23;

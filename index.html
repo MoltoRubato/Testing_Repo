@@ -3,22 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snake Game</title>
+    <title>Arcade Games</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="game-container">
-        <h1>Snake Game</h1>
+        <div id="game-switcher">
+            <button class="game-tab active" data-game="snake">Snake</button>
+            <button class="game-tab" data-game="tetris">Tetris</button>
+        </div>
+        <h1 id="game-title">Snake</h1>
         <div id="score-board">
             <span>Score: <span id="score">0</span></span>
+            <span id="level-display" style="display:none">Level: <span id="level">1</span></span>
             <span>High Score: <span id="high-score">0</span></span>
         </div>
-        <canvas id="game-canvas" width="400" height="400"></canvas>
+        <div id="game-area">
+            <canvas id="game-canvas" width="400" height="400"></canvas>
+            <div id="next-piece-container" style="display:none">
+                <p>Next</p>
+                <canvas id="next-piece-canvas" width="100" height="100"></canvas>
+            </div>
+        </div>
         <div id="controls">
             <button id="start-btn">Start Game</button>
             <p id="instructions">Arrow keys / WASD to move &bull; P or Esc to pause &bull; Swipe on mobile</p>
         </div>
     </div>
-    <script src="game.js"></script>
+    <script src="sound.js"></script>
+    <script src="snake.js"></script>
+    <script src="tetris.js"></script>
+    <script src="main.js"></script>
 </body>
 </html>

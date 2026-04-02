@@ -92,6 +92,11 @@ const ShooterGame = {
     screenShake: 0,
     killFeed: [],
 
+    // Combo system
+    combo: 0,
+    comboTimer: 0,
+    maxCombo: 0,
+
     // Arena
     arenaSize: 40,
     wallHeight: 4,
@@ -481,6 +486,9 @@ const ShooterGame = {
         this.enemiesAlive = 0;
         this.enemiesPerWave = 3;
         this.spawnTimer = 0;
+        this.combo = 0;
+        this.comboTimer = 0;
+        this.maxCombo = 0;
 
         // Reset player
         this.player.health = this.player.maxHealth;
@@ -590,6 +598,7 @@ const ShooterGame = {
         this.updateBullets(delta);
         this.updateParticles(delta);
         this.updatePickups(delta);
+        this.updateCombo(delta);
         this.spawnEnemies(delta);
         this.checkWaveProgress();
 
@@ -1152,8 +1161,9 @@ const ShooterGame = {
                 this.spawnPickup(deathPos);
             }
 
-            // Kill feed
+            // Kill feed + combo
             this.addKillFeedEntry();
+            this.addComboKill();
 
             // Screen shake
             this.screenShake = 0.3;
@@ -1198,6 +1208,7 @@ const ShooterGame = {
 
         document.getElementById('death-kills').textContent = this.kills;
         document.getElementById('death-waves').textContent = this.wave;
+        document.getElementById('death-combo').textContent = this.maxCombo;
         this.deathScreen.style.display = 'flex';
 
         document.getElementById('respawn-btn').onclick = () => {
@@ -1219,6 +1230,9 @@ const ShooterGame = {
             // Bonus ammo between waves
             this.weapon.reserve += 30;
             this.player.health = Math.min(this.player.maxHealth, this.player.health + 25);
+
+            // Wave announcement
+            this.showWaveAnnouncement();
 
             Sound.levelUp();
             this.updateHUD();
@@ -1298,6 +1312,52 @@ const ShooterGame = {
             this.camera.position.x += (Math.random() - 0.5) * intensity;
             this.camera.position.y += (Math.random() - 0.5) * intensity;
             this.screenShake = Math.max(0, this.screenShake - delta * 2);
+        }
+    },
+
+    // ===== WAVE & COMBO =====
+    showWaveAnnouncement() {
+        const el = document.getElementById('wave-announce');
+        if (!el) return;
+        el.textContent = `Wave ${this.wave}`;
+        el.style.display = '';
+        el.style.animation = 'none';
+        // Trigger reflow to restart animation
+        void el.offsetWidth;
+        el.style.animation = 'wave-in 0.5s ease-out';
+        setTimeout(() => { el.style.display = 'none'; }, 2500);
+    },
+
+    addComboKill() {
+        this.combo++;
+        this.comboTimer = 3; // seconds to keep combo alive
+        if (this.combo > this.maxCombo) this.maxCombo = this.combo;
+
+        const el = document.getElementById('combo-display');
+        if (!el) return;
+
+        if (this.combo >= 2) {
+            const labels = ['', '', 'DOUBLE KILL', 'TRIPLE KILL', 'MULTI KILL', 'MEGA KILL', 'ULTRA KILL'];
+            const label = this.combo < labels.length ? labels[this.combo] : `${this.combo}x KILL STREAK`;
+            el.textContent = label;
+            el.style.display = '';
+            el.style.color = this.combo >= 5 ? '#ff4444' : this.combo >= 3 ? '#ff8800' : '#ffaa00';
+
+            // Bonus score for combos
+            const comboBonus = this.combo * 50;
+            this.score += comboBonus;
+            if (this.onScore) this.onScore(this.score);
+        }
+    },
+
+    updateCombo(delta) {
+        if (this.combo > 0) {
+            this.comboTimer -= delta;
+            if (this.comboTimer <= 0) {
+                this.combo = 0;
+                const el = document.getElementById('combo-display');
+                if (el) el.style.display = 'none';
+            }
         }
     },
 

@@ -339,6 +339,42 @@ h1 {
     text-shadow: 0 0 4px rgba(0,0,0,0.8);
 }
 
+/* Wave announcement */
+#wave-announce {
+    position: absolute;
+    top: 35%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #00ff88;
+    font-size: 42px;
+    font-weight: bold;
+    text-shadow: 0 0 20px rgba(0, 255, 136, 0.6), 0 0 40px rgba(0, 255, 136, 0.3);
+    pointer-events: none;
+    z-index: 15;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    animation: wave-in 0.5s ease-out;
+}
+
+@keyframes wave-in {
+    from { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+    to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+/* Combo display */
+#combo-display {
+    position: absolute;
+    top: 55%;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #ffaa00;
+    font-size: 20px;
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(255, 170, 0, 0.5);
+    pointer-events: none;
+    z-index: 12;
+}
+
 /* Damage flash overlay */
 #damage-flash {
     position: absolute;

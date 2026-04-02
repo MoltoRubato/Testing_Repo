@@ -77,6 +77,10 @@ const ShooterGame = {
     minimapCanvas: null,
     minimapCtx: null,
 
+    // Screen effects
+    screenShake: 0,
+    killFeed: [],
+
     // Arena
     arenaSize: 40,
     wallHeight: 4,
@@ -585,6 +589,8 @@ const ShooterGame = {
         this.camera.rotation.y = this.player.yaw;
         this.camera.rotation.x = this.player.pitch;
 
+        this.applyScreenShake(delta);
+
         this.renderer.render(this.scene, this.camera);
         this.animationId = requestAnimationFrame(() => this.gameLoop());
     },
@@ -917,6 +923,10 @@ const ShooterGame = {
 
         enemy.health -= damage;
 
+        // Hitmarker
+        this.showHitmarker(enemy.health <= 0);
+        Sound.hit();
+
         // Flash red
         enemy.body.material.emissive = new THREE.Color(0xff0000);
         setTimeout(() => {
@@ -949,6 +959,12 @@ const ShooterGame = {
 
             // Remove enemy mesh
             this.scene.remove(enemy.mesh);
+
+            // Kill feed
+            this.addKillFeedEntry();
+
+            // Screen shake
+            this.screenShake = 0.3;
 
             this.updateHUD();
             if (this.onScore) this.onScore(this.score);
@@ -1047,6 +1063,49 @@ const ShooterGame = {
                 p.mesh.material.dispose();
                 this.particles.splice(i, 1);
             }
+        }
+    },
+
+    // ===== SCREEN EFFECTS =====
+    showHitmarker(isKill) {
+        const hm = document.getElementById('hitmarker');
+        if (!hm) return;
+        hm.style.display = '';
+        hm.style.opacity = '1';
+        hm.style.color = isKill ? '#ff3333' : '#ffffff';
+        hm.textContent = isKill ? 'X' : '+';
+        setTimeout(() => {
+            hm.style.opacity = '0';
+            setTimeout(() => { hm.style.display = 'none'; }, 100);
+        }, isKill ? 300 : 150);
+    },
+
+    addKillFeedEntry() {
+        const feed = document.getElementById('kill-feed');
+        if (!feed) return;
+        const entry = document.createElement('div');
+        entry.className = 'kill-feed-entry';
+        entry.textContent = `Enemy eliminated (+${100 * this.wave})`;
+        feed.prepend(entry);
+
+        // Fade out and remove
+        setTimeout(() => {
+            entry.style.opacity = '0';
+            setTimeout(() => entry.remove(), 500);
+        }, 3000);
+
+        // Keep feed to 5 entries max
+        while (feed.children.length > 5) {
+            feed.lastChild.remove();
+        }
+    },
+
+    applyScreenShake(delta) {
+        if (this.screenShake > 0) {
+            const intensity = this.screenShake * 0.02;
+            this.camera.position.x += (Math.random() - 0.5) * intensity;
+            this.camera.position.y += (Math.random() - 0.5) * intensity;
+            this.screenShake = Math.max(0, this.screenShake - delta * 2);
         }
     },
 

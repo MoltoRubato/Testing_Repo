@@ -237,34 +237,49 @@ const TetrisGame = {
     },
 
     clearLines() {
-        let cleared = 0;
-        for (let r = this.ROWS - 1; r >= 0; r--) {
+        const fullRows = [];
+        for (let r = 0; r < this.ROWS; r++) {
             if (this.board[r].every(cell => cell !== 0)) {
-                this.board.splice(r, 1);
-                this.board.unshift(new Array(this.COLS).fill(0));
-                cleared++;
-                r++; // re-check this row
+                fullRows.push(r);
             }
         }
 
-        if (cleared > 0) {
-            const points = [0, 100, 300, 500, 800];
-            this.score += (points[cleared] || 800) * this.level;
-            this.lines += cleared;
-            Sound.lineClear();
+        if (fullRows.length === 0) return;
 
-            if (this.onScore) this.onScore(this.score);
-            if (this.onLines) this.onLines(this.lines);
+        // Flash animation: briefly turn cleared rows white
+        this.clearingLines = fullRows;
+        this.clearAnimFrame = 6;
+        Sound.lineClear();
 
-            // Level up every 10 lines
-            const newLevel = Math.floor(this.lines / 10) + 1;
-            if (newLevel > this.level) {
-                this.level = newLevel;
-                this.speed = Math.max(100, 800 - (this.level - 1) * 75);
-                Sound.levelUp();
-                if (this.onLevel) this.onLevel(this.level);
+        const flashInterval = setInterval(() => {
+            this.clearAnimFrame--;
+            if (this.clearAnimFrame <= 0) {
+                clearInterval(flashInterval);
+                this.clearingLines = [];
+
+                // Actually remove the rows
+                for (let i = fullRows.length - 1; i >= 0; i--) {
+                    this.board.splice(fullRows[i], 1);
+                    this.board.unshift(new Array(this.COLS).fill(0));
+                }
+
+                const cleared = fullRows.length;
+                const points = [0, 100, 300, 500, 800];
+                this.score += (points[cleared] || 800) * this.level;
+                this.lines += cleared;
+
+                if (this.onScore) this.onScore(this.score);
+                if (this.onLines) this.onLines(this.lines);
+
+                const newLevel = Math.floor(this.lines / 10) + 1;
+                if (newLevel > this.level) {
+                    this.level = newLevel;
+                    this.speed = Math.max(100, 800 - (this.level - 1) * 75);
+                    Sound.levelUp();
+                    if (this.onLevel) this.onLevel(this.level);
+                }
             }
-        }
+        }, 50);
     },
 
     moveDown() {
@@ -411,6 +426,14 @@ const TetrisGame = {
 
         // Locked blocks
         for (let r = 0; r < this.ROWS; r++) {
+            if (this.clearingLines.includes(r)) {
+                // Flash effect: alternate white and original
+                const flash = this.clearAnimFrame % 2 === 0;
+                const B = this.BLOCK_SIZE;
+                ctx.fillStyle = flash ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.3)';
+                ctx.fillRect(0, r * B, this.COLS * B, B);
+                continue;
+            }
             for (let c = 0; c < this.COLS; c++) {
                 if (this.board[r][c]) {
                     this.drawBlock(c, r, this.board[r][c]);

@@ -102,8 +102,11 @@ const ShooterGame = {
     wallHeight: 4,
     obstacles: [],
 
+    _setupDone: false,
+
     init(canvas, ctx) {
-        // Shooter doesn't use the shared canvas
+        // Shooter doesn't use the shared canvas, but needs its own setup
+        this.setup();
     },
 
     getInstructions() {
@@ -115,6 +118,14 @@ const ShooterGame = {
         this.viewport = document.getElementById('shooter-viewport');
         this.overlay = document.getElementById('shooter-overlay');
         this.deathScreen = document.getElementById('shooter-death-screen');
+
+        // Only do full Three.js init once
+        if (this._setupDone) {
+            // Just re-render the existing scene
+            if (this.renderer) this.renderer.render(this.scene, this.camera);
+            return;
+        }
+        this._setupDone = true;
 
         // Ensure damage flash and muzzle flash elements exist
         if (!document.getElementById('damage-flash')) {
@@ -151,10 +162,32 @@ const ShooterGame = {
         this.setupLighting();
         this.buildWeaponModel();
         this.setupMinimap();
+        this.setupClickToStart();
         this.setupPointerLock();
 
         // Initial render
         this.renderer.render(this.scene, this.camera);
+    },
+
+    setupClickToStart() {
+        // Click on overlay to start game
+        this.overlay.addEventListener('click', () => {
+            if (!this.running) {
+                this.startGame();
+            }
+        });
+
+        // Click on death screen respawn button already handled in die()
+        // Click on viewport when paused (overlay showing "Paused")
+        this.container.addEventListener('click', (e) => {
+            // If clicking the shooter container area and game isn't running, start
+            if (!this.running && e.target !== document.getElementById('respawn-btn')) {
+                // Only if overlay is visible
+                if (this.overlay.style.display !== 'none') {
+                    this.startGame();
+                }
+            }
+        });
     },
 
     setupLighting() {
@@ -442,23 +475,34 @@ const ShooterGame = {
 
     setupPointerLock() {
         const el = this.viewport;
+        const game = this;
 
+        // Click on canvas to re-engage pointer lock when paused
         el.addEventListener('click', () => {
-            if (!this.running) {
-                this.startGame();
+            if (!game.running) {
+                game.startGame();
                 return;
             }
-            if (!this.pointerLocked) {
-                el.requestPointerLock();
+            if (!game.pointerLocked) {
+                const lockTarget = game.renderer.domElement || el;
+                lockTarget.requestPointerLock().catch(() => {});
+                // Also resume if paused
+                if (game.paused) {
+                    game.paused = false;
+                    game.overlay.style.display = 'none';
+                    game.clock.start();
+                    game.gameLoop();
+                }
             }
         });
 
         document.addEventListener('pointerlockchange', () => {
-            this.pointerLocked = document.pointerLockElement === el;
-            if (!this.pointerLocked && this.running && !this.paused) {
+            game.pointerLocked = !!document.pointerLockElement;
+            if (!game.pointerLocked && game.running && !game.paused && !game._justStarted) {
                 // Show overlay when pointer lock is lost
-                this.overlay.style.display = 'flex';
-                this.overlay.querySelector('h2').textContent = 'Paused';
+                game.overlay.style.display = 'flex';
+                game.overlay.querySelector('h2').textContent = 'Click to Resume';
+                game.paused = true;
             }
         });
 
@@ -526,8 +570,14 @@ const ShooterGame = {
         this.overlay.style.display = 'none';
         this.deathScreen.style.display = 'none';
 
-        // Request pointer lock
-        this.viewport.requestPointerLock();
+        // Request pointer lock (try canvas first, then viewport)
+        this._justStarted = true;
+        const lockTarget = this.renderer.domElement || this.viewport;
+        lockTarget.requestPointerLock().catch(() => {
+            // Pointer lock denied — game still works, just no mouse capture
+            console.log('Pointer lock denied — use click to re-engage');
+        });
+        setTimeout(() => { this._justStarted = false; }, 500);
 
         // Start loop
         this.clock.start();

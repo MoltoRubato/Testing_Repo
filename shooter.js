@@ -652,37 +652,41 @@ const ShooterGame = {
     gameLoop() {
         if (!this.running || this.paused) return;
 
-        const delta = this.clock.getDelta();
-        const now = performance.now();
+        try {
+            const delta = this.clock.getDelta();
+            const now = performance.now();
 
-        this.updatePlayer(delta);
-        this.updateShooting(now);
-        this.updateEnemies(delta, now);
-        this.updateBullets(delta);
-        this.updateParticles(delta);
-        this.updatePickups(delta);
-        this.updateCombo(delta);
-        this.spawnEnemies(delta);
-        this.checkWaveProgress();
+            this.updatePlayer(delta);
+            this.updateShooting(now);
+            this.updateEnemies(delta, now);
+            this.updateBullets(delta);
+            this.updateParticles(delta);
+            this.updatePickups(delta);
+            this.updateCombo(delta);
+            this.spawnEnemies(delta);
+            this.checkWaveProgress();
 
-        // Determine movement state for weapon sway
-        const isMoving = this.keys['w'] || this.keys['W'] || this.keys['s'] || this.keys['S'] ||
-                         this.keys['a'] || this.keys['A'] || this.keys['d'] || this.keys['D'] ||
-                         this.keys['ArrowUp'] || this.keys['ArrowDown'] || this.keys['ArrowLeft'] || this.keys['ArrowRight'];
-        const isSprinting = this.keys['Shift'] && isMoving;
+            // Determine movement state for weapon sway
+            const isMoving = this.keys['w'] || this.keys['W'] || this.keys['s'] || this.keys['S'] ||
+                             this.keys['a'] || this.keys['A'] || this.keys['d'] || this.keys['D'] ||
+                             this.keys['ArrowUp'] || this.keys['ArrowDown'] || this.keys['ArrowLeft'] || this.keys['ArrowRight'];
+            const isSprinting = this.keys['Shift'] && isMoving;
 
-        this.updateWeaponSway(delta, isMoving, isSprinting);
-        this.updateMinimap();
+            this.updateWeaponSway(delta, isMoving, isSprinting);
+            this.updateMinimap();
 
-        // Update camera
-        this.camera.position.copy(this.player.position);
-        this.camera.rotation.order = 'YXZ';
-        this.camera.rotation.y = this.player.yaw;
-        this.camera.rotation.x = this.player.pitch;
+            // Update camera
+            this.camera.position.copy(this.player.position);
+            this.camera.rotation.order = 'YXZ';
+            this.camera.rotation.y = this.player.yaw;
+            this.camera.rotation.x = this.player.pitch;
 
-        this.applyScreenShake(delta);
+            this.applyScreenShake(delta);
 
-        this.renderer.render(this.scene, this.camera);
+            this.renderer.render(this.scene, this.camera);
+        } catch (err) {
+            console.error('Game loop error:', err);
+        }
         this.animationId = requestAnimationFrame(() => this.gameLoop());
     },
 
@@ -785,6 +789,7 @@ const ShooterGame = {
 
             for (let p = 0; p < pelletCount; p++) {
                 const raycaster = new THREE.Raycaster();
+                raycaster.camera = this.camera;
                 const dir = this.getForwardDir();
 
                 // Add spread for shotgun pellets
@@ -799,7 +804,9 @@ const ShooterGame = {
                 raycaster.set(this.camera.position.clone(), dir);
                 raycaster.far = this.weapon.range;
 
-                const hits = raycaster.intersectObjects(enemyMeshes, true);
+                // Filter to only meshes still in the scene
+                const validMeshes = enemyMeshes.filter(m => m.parent);
+                const hits = raycaster.intersectObjects(validMeshes, true);
 
                 if (hits.length > 0) {
                     anyHit = true;

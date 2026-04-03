@@ -498,11 +498,20 @@ const ShooterGame = {
 
         document.addEventListener('pointerlockchange', () => {
             game.pointerLocked = !!document.pointerLockElement;
+            if (!game.pointerLocked) {
+                // Clear all input state when pointer lock is lost
+                game.keys = {};
+                game.mouseDown = false;
+                game.mouse.dx = 0;
+                game.mouse.dy = 0;
+            }
             if (!game.pointerLocked && game.running && !game.paused && !game._justStarted) {
-                // Show overlay when pointer lock is lost
-                game.overlay.style.display = 'flex';
-                game.overlay.querySelector('h2').textContent = 'Click to Resume';
-                game.paused = true;
+                // Show overlay when pointer lock is lost (but NOT during death)
+                if (game.player.health > 0) {
+                    game.overlay.style.display = 'flex';
+                    game.overlay.querySelector('h2').textContent = 'Click to Resume';
+                    game.paused = true;
+                }
             }
         });
 
@@ -513,10 +522,12 @@ const ShooterGame = {
         });
 
         document.addEventListener('mousedown', (e) => {
-            if (e.button === 0) this.mouseDown = true;
+            if (e.button === 0 && game.running && !game.paused && game.pointerLocked) {
+                game.mouseDown = true;
+            }
         });
         document.addEventListener('mouseup', (e) => {
-            if (e.button === 0) this.mouseDown = false;
+            if (e.button === 0) game.mouseDown = false;
         });
     },
 
@@ -595,6 +606,8 @@ const ShooterGame = {
     stop() {
         this.running = false;
         this.paused = false;
+        this.keys = {};
+        this.mouseDown = false;
         cancelAnimationFrame(this.animationId);
         if (document.pointerLockElement) {
             document.exitPointerLock();
@@ -696,7 +709,7 @@ const ShooterGame = {
 
         if (moveDir.length() > 0) moveDir.normalize();
 
-        const isSprinting = this.keys['Shift'];
+        const isSprinting = this.keys['Shift'] && moveDir.length() > 0;
         const speed = isSprinting ? this.player.sprintSpeed : this.player.speed;
 
         const newPos = this.player.position.clone();
@@ -1247,26 +1260,32 @@ const ShooterGame = {
 
     die() {
         this.running = false;
-        cancelAnimationFrame(this.animationId);
+        this.mouseDown = false;
+        this.keys = {};
 
-        if (document.pointerLockElement) document.exitPointerLock();
+        // Defer death screen to let current frame finish rendering
+        setTimeout(() => {
+            cancelAnimationFrame(this.animationId);
 
-        if (this.score > this.highScore) {
-            this.highScore = this.score;
-            localStorage.setItem('shooterHighScore', this.highScore);
-        }
+            if (document.pointerLockElement) document.exitPointerLock();
 
-        document.getElementById('death-kills').textContent = this.kills;
-        document.getElementById('death-waves').textContent = this.wave;
-        document.getElementById('death-combo').textContent = this.maxCombo;
-        this.deathScreen.style.display = 'flex';
+            if (this.score > this.highScore) {
+                this.highScore = this.score;
+                localStorage.setItem('shooterHighScore', this.highScore);
+            }
 
-        document.getElementById('respawn-btn').onclick = () => {
-            this.deathScreen.style.display = 'none';
-            this.startGame();
-        };
+            document.getElementById('death-kills').textContent = this.kills;
+            document.getElementById('death-waves').textContent = this.wave;
+            document.getElementById('death-combo').textContent = this.maxCombo;
+            this.deathScreen.style.display = 'flex';
 
-        if (this.onEnd) this.onEnd(this.score, this.highScore);
+            document.getElementById('respawn-btn').onclick = () => {
+                this.deathScreen.style.display = 'none';
+                this.startGame();
+            };
+
+            if (this.onEnd) this.onEnd(this.score, this.highScore);
+        }, 50);
     },
 
     // ===== WAVE SYSTEM =====
@@ -1436,16 +1455,17 @@ const ShooterGame = {
 
 // Keyboard listeners for shooter (always active, checked by game state)
 document.addEventListener('keydown', (e) => {
-    ShooterGame.keys[e.key] = true;
-    if (!ShooterGame.running || ShooterGame.paused) return;
+    if (ShooterGame.running && !ShooterGame.paused) {
+        ShooterGame.keys[e.key] = true;
 
-    if (e.key === 'r' || e.key === 'R') {
-        ShooterGame.reload();
+        if (e.key === 'r' || e.key === 'R') {
+            ShooterGame.reload();
+        }
+        // Weapon switching
+        if (e.key === '1') ShooterGame.switchWeapon(0);
+        if (e.key === '2') ShooterGame.switchWeapon(1);
+        if (e.key === '3') ShooterGame.switchWeapon(2);
     }
-    // Weapon switching
-    if (e.key === '1') ShooterGame.switchWeapon(0);
-    if (e.key === '2') ShooterGame.switchWeapon(1);
-    if (e.key === '3') ShooterGame.switchWeapon(2);
 });
 
 document.addEventListener('keyup', (e) => {

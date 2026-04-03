@@ -667,10 +667,10 @@ const ShooterGame = {
             this.checkWaveProgress();
 
             // Determine movement state for weapon sway
-            const isMoving = this.keys['w'] || this.keys['W'] || this.keys['s'] || this.keys['S'] ||
-                             this.keys['a'] || this.keys['A'] || this.keys['d'] || this.keys['D'] ||
+            const isMoving = this.keys['KeyW'] || this.keys['KeyS'] ||
+                             this.keys['KeyA'] || this.keys['KeyD'] ||
                              this.keys['ArrowUp'] || this.keys['ArrowDown'] || this.keys['ArrowLeft'] || this.keys['ArrowRight'];
-            const isSprinting = this.keys['Shift'] && isMoving;
+            const isSprinting = (this.keys['ShiftLeft'] || this.keys['ShiftRight']) && isMoving;
 
             this.updateWeaponSway(delta, isMoving, isSprinting);
             this.updateMinimap();
@@ -706,14 +706,14 @@ const ShooterGame = {
         right.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.player.yaw);
 
         const moveDir = new THREE.Vector3();
-        if (this.keys['w'] || this.keys['W'] || this.keys['ArrowUp']) moveDir.add(forward);
-        if (this.keys['s'] || this.keys['S'] || this.keys['ArrowDown']) moveDir.sub(forward);
-        if (this.keys['a'] || this.keys['A'] || this.keys['ArrowLeft']) moveDir.sub(right);
-        if (this.keys['d'] || this.keys['D'] || this.keys['ArrowRight']) moveDir.add(right);
+        if (this.keys['KeyW'] || this.keys['ArrowUp']) moveDir.add(forward);
+        if (this.keys['KeyS'] || this.keys['ArrowDown']) moveDir.sub(forward);
+        if (this.keys['KeyA'] || this.keys['ArrowLeft']) moveDir.sub(right);
+        if (this.keys['KeyD'] || this.keys['ArrowRight']) moveDir.add(right);
 
         if (moveDir.length() > 0) moveDir.normalize();
 
-        const isSprinting = this.keys['Shift'] && moveDir.length() > 0;
+        const isSprinting = (this.keys['ShiftLeft'] || this.keys['ShiftRight']) && moveDir.length() > 0;
         const speed = isSprinting ? this.player.sprintSpeed : this.player.speed;
 
         const newPos = this.player.position.clone();
@@ -1460,21 +1460,28 @@ const ShooterGame = {
     drawEmpty() {},
 };
 
-// Keyboard listeners for shooter (always active, checked by game state)
+// Keyboard listeners for shooter — use e.code for consistent key identity
+// (e.key changes case with Shift held, causing stuck keys)
 document.addEventListener('keydown', (e) => {
     if (ShooterGame.running && !ShooterGame.paused) {
-        ShooterGame.keys[e.key] = true;
+        ShooterGame.keys[e.code] = true;
 
-        if (e.key === 'r' || e.key === 'R') {
+        if (e.code === 'KeyR') {
             ShooterGame.reload();
         }
         // Weapon switching
-        if (e.key === '1') ShooterGame.switchWeapon(0);
-        if (e.key === '2') ShooterGame.switchWeapon(1);
-        if (e.key === '3') ShooterGame.switchWeapon(2);
+        if (e.code === 'Digit1') ShooterGame.switchWeapon(0);
+        if (e.code === 'Digit2') ShooterGame.switchWeapon(1);
+        if (e.code === 'Digit3') ShooterGame.switchWeapon(2);
     }
 });
 
 document.addEventListener('keyup', (e) => {
-    ShooterGame.keys[e.key] = false;
+    ShooterGame.keys[e.code] = false;
+});
+
+// Clear all keys when window loses focus to prevent stuck keys
+window.addEventListener('blur', () => {
+    ShooterGame.keys = {};
+    ShooterGame.mouseDown = false;
 });
